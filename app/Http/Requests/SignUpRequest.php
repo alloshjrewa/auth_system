@@ -2,7 +2,11 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Http\FormRequest;
+
+use App\Exceptions\SignUpValidationException;
+use Illuminate\Contracts\Validation\Validator;
 
 class SignUpRequest extends FormRequest
 {
@@ -11,7 +15,7 @@ class SignUpRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+       return  true;
     }
 
     /**
@@ -28,5 +32,10 @@ class SignUpRequest extends FormRequest
             'phone_number'  => 'required|unique:users',
             'profile_photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'certificate'   => 'required|mimes:pdf|max:2048' ];
+    }
+    protected function failedValidation(Validator $validator)
+    {
+        $errors = $validator->errors();
+        throw new SignUpValidationException($errors);
     }
 }
