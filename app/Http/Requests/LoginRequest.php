@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
@@ -26,5 +28,10 @@ class LoginRequest extends FormRequest
             'password'      => 'required|min:6',
             'phone_number'  => 'required|',
         ];
+    }
+    protected function failedValidation(Validator $validator)
+    {
+        throw new ValidationException($validator);
+
     }
 }

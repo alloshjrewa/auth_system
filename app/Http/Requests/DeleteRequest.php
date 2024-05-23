@@ -5,9 +5,8 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Http\Exceptions\HttpResponseException;
 
-class VerifyEmailRequest extends FormRequest
+class DeleteRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,13 +24,13 @@ class VerifyEmailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id' => 'required',
-            'token' => 'required|max:6|min:6'
+            "email"     => "required",
+            "password"  => "required"
         ];
     }
-
     protected function failedValidation(Validator $validator)
-{
-    throw new ValidationException($validator);
+    {
+        throw new ValidationException($validator);
+
     }
 }

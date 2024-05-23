@@ -12,6 +12,7 @@ use Illuminate\Queue\SerializesModels;
 class EmailVerification extends Mailable
 {
     use Queueable, SerializesModels;
+
     public $user;
 
     /**
@@ -20,7 +21,9 @@ class EmailVerification extends Mailable
     public function __construct($user)
     {
        $this->user = $user;
+
     }
+
     /**
      * Get the message envelope.
      */
@@ -40,6 +43,7 @@ class EmailVerification extends Mailable
             markdown: 'emails.email_verification',
         );
     }
+
     /**
      * Get the attachments for the message.
      *

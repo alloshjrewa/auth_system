@@ -2,46 +2,45 @@
 
 namespace App\Http\Controllers\Api;
 
-
-
-
-use Carbon\Carbon;
-use App\Models\User;
-
-use App\Enums\TokenAbility;
-use Illuminate\Support\Str;
-use App\Traits\GeneralTrait;
-use Illuminate\Http\Request;
-use App\Events\RegisteredUser;
-use App\Http\Requests\LoginRequest;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\SignUpRequest;
+use Illuminate\Http\Request;
+use App\Models\User;
+use App\Events\RegisteredUser;
+use App\Enums\TokenAbility;
+use App\Traits\FilesTrait;
+use App\Traits\ResponseTrait;
 
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Storage;
+
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\DeleteRequest;
+use App\Http\Requests\SignUpRequest;
 use App\Http\Requests\VerifyEmailRequest;
-use Illuminate\Database\Events\QueryExecuted;
+
+
+
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class AuthController extends Controller
 {
-    use GeneralTrait;
+    use ResponseTrait,FilesTrait;
 
 
     public function signupUser(SignUpRequest $request)
     {
-        $photo = $request->file('profile_photo');
-        $photo_name = $photo->getClientOriginalName();
-        $photo_Path = Storage::putFileAs('/profile_photos' , $photo, $photo_name);
 
-    // certificate Path
+        // Photo Path
 
-        $certificate = $request->file('certificate');
-        $certificate_name = $certificate->getClientOriginalName();
-        $certificate_Path = Storage::putFileAs('/certificates' , $certificate, $certificate_name);
+        $photo_Path = $this->uploadFile($request->file('profile_photo') , '/profile_photos' );
 
-    //User Register
+        // certificate Path
+
+        $certificate_Path = $this->uploadFile($request->file('certificate'),'/certificates' );
+
+        //User Register
 
     $user = User::create([
         'name'                      => $request->name,
@@ -54,12 +53,18 @@ class AuthController extends Controller
         'verification_code_expiration' => Carbon::now()->addMinutes(3)
     ]);
 
-   // event(new RegisteredUser($user));
+
+    //event(new RegisteredUser($user));
 
     $accessToken = $user->createToken('access_token', [TokenAbility::ACCESS_API->value], Carbon::now()->addMinutes(config('sanctum.ac_expiration')));
+
     $refreshToken = $user->createToken('refresh_token', [TokenAbility::ISSUE_ACCESS_TOKEN->value], Carbon::now()->addMinutes(config('sanctum.rt_expiration')));
+
     $value["access_token"] = $accessToken->plainTextToken;
+
     $value["refresh_token"] = $refreshToken->plainTextToken;
+
+
     return $this->SuccessResponse(201 ,"you signed up successfully ,we send a email verification to your email so please verify your email" , $value );
 
     }
@@ -69,19 +74,38 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
+        //Email Not Found Error Response
+
         if(!$user){
+
             return $this->errorResponse(404  ,"Email Does not Exists"  );
         }
 
+        //Password Does Not Match Error Response
+
         else if ( ! Hash::check($request->password, $user->password) ) {
+
             return $this->errorResponse(422 ,"Password Does not Match"  );
+
         }
+
+        //Phone Number Does Not Match Error Response
+
         else if ( $user->phone_number != $request->phone_number) {
+
             return $this->errorResponse(422 ,"Phone Number Does not Match"  );
         }
+
+        // Login Success Response
+
         else {
-            $token =$user->createToken("API TOKEN", [''],$expiresAt = now()->addMinute(5))->plainTextToken;
-            return $this->SuccessResponse(200 ,"User Logged In Successfully"  , $token  );
+
+            $accessToken = $user->createToken('access_token', [TokenAbility::ACCESS_API->value], Carbon::now()->addMinutes(config('sanctum.ac_expiration')));
+            $refreshToken = $user->createToken('refresh_token', [TokenAbility::ISSUE_ACCESS_TOKEN->value], Carbon::now()->addMinutes(config('sanctum.rt_expiration')));
+            $value["access_token"] = $accessToken->plainTextToken;
+            $value["refresh_token"] = $refreshToken->plainTextToken;
+
+            return $this->SuccessResponse(200 ,"User Logged In Successfully"  , $value  );
 
         }
     }
@@ -89,38 +113,33 @@ class AuthController extends Controller
     //Logout Process
     public function logoutUser(Request $request)
     {
-        $user = Auth::user();
-        if(!$user){
-            return $this->errorResponse(400,"UnAuthenticated User"  );
-            return $this->errorResponse(401  ,"UnAuthenticated User"  );
-        }
-        else {
 
         $request->user()->tokens()->delete();
-        return $this->returnSuccessResponse(200 ,"User Logout Successfully" ,"" , ''  );
 
-        }
+        // Logout Success Response
+        return $this->SuccessResponse(200 ,"User Logout Successfully" );
+
     }
 
     //Refresh Token
 
     public function refreshToken(Request $request){
 
-        if(Carbon::now() > $request->user()->currentAccessToken()->expires_at){
-            return $this->errorResponse(404 ,"Refresh Token Expired"  );
-
-        }else{
 
         $request->user()->tokens()->delete();
+
         $accessToken = $request->user()->createToken('access_token', [TokenAbility::ACCESS_API->value], Carbon::now()->addMinutes(config('sanctum.ac_expiration')));
+
         $refreshToken = $request->user()->createToken('refresh_token', [TokenAbility::ISSUE_ACCESS_TOKEN->value], Carbon::now()->addMinutes(config('sanctum.rt_expiration')));
-            $value['ac_token'] = $accessToken->plainTextToken;
-            $value['rf_token'] = $refreshToken->plainTextToken;
+
+        $value['access_token'] = $accessToken->plainTextToken;
+
+        $value['refresh_token'] = $refreshToken->plainTextToken;
 
         return $this->SuccessResponse(200 ,"Token Generated" , $value );
 
 
-        }
+
 
     }
 
@@ -129,23 +148,37 @@ class AuthController extends Controller
     public function verifyEmail (VerifyEmailRequest $request){
 
         $user = User::where('verification_code' , '=' , $request->token)->where('id', '=' , $request->id)->first();
-        if(Carbon::now() > $user->verification_code_expiration){
-            return  response()->json([
-                "status"    => "false",
-                "message"   => "Email Verification Expired"
-            ], 422);
-           }
 
-            if(!empty($user && Carbon::now() < $user->verification_code_expiration)){
-            $user->email_verified_at = Carbon::now();
-            $user->verification_code = null;
-            $user->save();
-            return response()->json([
-            "status"    => "true",
-            "message"   => "Your Email Verified successfully"
-        ], 200);
+        //Code Expired Error Response
+
+            if(Carbon::now() > $user->verification_code_expiration){
+
+                return $this->errorResponse(404 ,"Verification Code Expired"  );
+
             }
 
+        //Email Verification Success Response
+
+            if(!empty($user && Carbon::now() < $user->verification_code_expiration)){
+
+            $user->email_verified_at = Carbon::now();
+
+            $user->verification_code = null;
+
+            $user->save();
+
+            return $this->SuccessResponse(200 ,"Your Email Verified successfully"  );
+
+            }
+    }
+    public function destroy (DeleteRequest $request) {
+        $password = Hash::make($request->password);
+        // Logout Success Response
+        $user = User::where( 'email' , '=' , $request->email)->where('password' , '=' ,$password );
+        if(empty($user)){
+        throw new ModelNotFoundException();
+        }
+        return $this->SuccessResponse(200 ,"profile_photo Deleted Successfully" );
 
     }
 

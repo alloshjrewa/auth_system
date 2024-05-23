@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Foundation\Http\FormRequest;
 
-use App\Exceptions\SignUpValidationException;
+use GuzzleHttp\Psr7\Request;
+
+use Illuminate\Validation\ValidationException;
+use App\Exceptions\ValidateException;
+
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 
 class SignUpRequest extends FormRequest
@@ -35,7 +38,7 @@ class SignUpRequest extends FormRequest
     }
     protected function failedValidation(Validator $validator)
     {
-        $errors = $validator->errors();
-        throw new SignUpValidationException($errors);
+        throw new ValidationException($validator);
+
     }
 }
