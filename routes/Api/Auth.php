@@ -10,6 +10,8 @@ Route::controller(AuthController::class)->prefix('auth')
 
                 Route::post('signup', 'signupUser')->name('auth.signup');
                 Route::post('login', 'loginUser')->name("auth.login");
+
+
         });
 
         Route::middleware('auth:sanctum')
@@ -18,6 +20,9 @@ Route::controller(AuthController::class)->prefix('auth')
             Route::post('logout',  'logoutUser')->name("auth.logout");
             Route::post('email/verify',  'verifyEmail')->name("auth.verify");
             Route::get('refresh-token',  'refreshToken')->name("auth.refresh");
+            Route::post('delete',  'delete');
+
+
 
     });
 });

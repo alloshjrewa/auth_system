@@ -1,35 +1,38 @@
 <?php
 namespace App\Traits;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
+use App\Traits\ResponseTrait;
+
 use Illuminate\Http\UploadedFile;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Illuminate\Support\Facades\Storage;
 
 
 trait FilesTrait {
-
+    use ResponseTrait;
     public function uploadFile(UploadedFile $file, $path, $disk = '')
     {
-        $filename = time() . '_' . $file->getClientOriginalName();
+
+        $filename =   $this->StrategyName($file);
         $file->storeAs($path, $filename, $disk);
 
         return $filename;
     }
 
-    public function DeleteFile( int $httpResponseCode = 400 ,string $message ,?array $errors = [] ){
+    public function deleteFile($path,$disk ,$dir)
+    {
+        $path = $dir . $path;
+        if (Storage::disk($disk)->exists($path)) {
+             Storage::disk($disk)->delete($path);
+        }
+        else {
+            $this->errorResponse(404 , "photo does not exists");
+        }
+    }
+    public function StrategyName(UploadedFile $file)
+    {
+        $filename =  time() . '_' . $file->getClientOriginalName();
 
-        return response()->json([
-            "status" => false ,
-            "message" => $message ?? null ,
-            "errors"  =>$errors ?? null,
-        ] , $httpResponseCode);
-
+        return $filename;
     }
 
 }

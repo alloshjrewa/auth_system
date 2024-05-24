@@ -75,6 +75,14 @@ trait ResponseTrait {
             'errors' => $e,
         ], 409);
     }
+    public function RecordNotFoundException(ModelNotFoundException $e): JsonResponse
+    {
+        return response()->json([
+            'Message' => 'Sorry , Record Not Found',
+            'errors' => $e->getMessage(),
+        ], 404);
+    }
+
 
 
 

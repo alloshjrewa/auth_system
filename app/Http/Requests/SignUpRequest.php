@@ -5,11 +5,12 @@ namespace App\Http\Requests;
 
 use GuzzleHttp\Psr7\Request;
 
-use Illuminate\Validation\ValidationException;
+use GuzzleHttp\Psr7\Response;
 use App\Exceptions\ValidateException;
-
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class SignUpRequest extends FormRequest
 {
@@ -36,8 +37,19 @@ class SignUpRequest extends FormRequest
             'profile_photo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'certificate'   => 'required|mimes:pdf|max:2048' ];
     }
+
+
     protected function failedValidation(Validator $validator)
     {
+        $errors = $validator->errors();
+        if ($errors->has('email')) {
+            throw new HttpResponseException(response()->json([
+                'success' => false,
+                "message" => "Query Error",
+                'error' => 'Email already exists',
+            ], 409));
+        }
+
         throw new ValidationException($validator);
 
     }

@@ -104,7 +104,7 @@ class AuthController extends Controller
             $refreshToken = $user->createToken('refresh_token', [TokenAbility::ISSUE_ACCESS_TOKEN->value], Carbon::now()->addMinutes(config('sanctum.rt_expiration')));
             $value["access_token"] = $accessToken->plainTextToken;
             $value["refresh_token"] = $refreshToken->plainTextToken;
-
+            auth()->login($user);
             return $this->SuccessResponse(200 ,"User Logged In Successfully"  , $value  );
 
         }
@@ -117,6 +117,7 @@ class AuthController extends Controller
         $request->user()->tokens()->delete();
 
         // Logout Success Response
+
         return $this->SuccessResponse(200 ,"User Logout Successfully" );
 
     }
@@ -171,15 +172,19 @@ class AuthController extends Controller
 
             }
     }
-    public function destroy (DeleteRequest $request) {
-        $password = Hash::make($request->password);
+    public function delete (DeleteRequest $request) {
+        $user = User::where('email', $request->email)->first();
+        $password = Hash::check($request->password, $user->password);
         // Logout Success Response
-        $user = User::where( 'email' , '=' , $request->email)->where('password' , '=' ,$password );
-        if(empty($user)){
-        throw new ModelNotFoundException();
-        }
-        return $this->SuccessResponse(200 ,"profile_photo Deleted Successfully" );
 
+        if(empty($user) || ! $password){
+        throw new ModelNotFoundException('The Data Inserted Does not Match');
+        }else{
+             $this->deleteFile($user->profile_photo , "" , "profile_photos/");
+             $this->deleteFile($user->certificate , "" , "certificates/");
+            $user->delete();
+        return $this->SuccessResponse(200 ,"User Deleted Successfully" );
+        }
     }
 
 
