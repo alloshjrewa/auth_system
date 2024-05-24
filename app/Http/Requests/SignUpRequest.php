@@ -3,14 +3,12 @@
 namespace App\Http\Requests;
 
 
-use GuzzleHttp\Psr7\Request;
 
-use GuzzleHttp\Psr7\Response;
-use App\Exceptions\ValidateException;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Http\Exceptions\HttpResponseException;
+
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 class SignUpRequest extends FormRequest
 {
@@ -43,11 +41,7 @@ class SignUpRequest extends FormRequest
     {
         $errors = $validator->errors();
         if ($errors->has('email')) {
-            throw new HttpResponseException(response()->json([
-                'success' => false,
-                "message" => "Query Error",
-                'error' => 'Email already exists',
-            ], 409));
+            throw new ConflictHttpException();
         }
 
         throw new ValidationException($validator);
