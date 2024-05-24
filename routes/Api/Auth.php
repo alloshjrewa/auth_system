@@ -18,7 +18,6 @@ Route::controller(AuthController::class)->prefix('auth')
             Route::post('logout',  'logoutUser')->name("auth.logout");
             Route::post('email/verify',  'verifyEmail')->name("auth.verify");
             Route::get('refresh-token',  'refreshToken')->name("auth.refresh");
-            Route::post('destroy',  'destroy')->name("auth.delete");
 
     });
 });
